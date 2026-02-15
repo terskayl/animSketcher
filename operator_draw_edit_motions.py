@@ -24,7 +24,7 @@ def sample_path_at_t(points, arc_lengths, total_length, t):
         if arc_lengths[i] >= target_len:
             prev_len = arc_lengths[i-1]
             seg_len = arc_lengths[i] - prev_len
-            factor = (target_len - prev_len) / seg_len
+            factor = (target_len - prev_len) / seg_len if seg_len > 0 else 0
 
             return points[i-1].lerp(points[i], factor)
     return points[-1]  
@@ -79,8 +79,16 @@ class DrawEditMotionsOperator(bpy.types.Operator):
             active_bone = context.active_pose_bone
             motion_path_points = active_bone.bone.cached_motion_path.points
             
-            motion_path = [Vector(p.location) for p in motion_path_points]
-            mouse_path = [Vector(p.location) for p in context.scene.anim_sketcher.sketch_points]
+            if not motion_path_points:
+                self.report({'WARNING'}, "No cached motion path on active bone, cannot run operator")
+                return {'CANCELLED'}
+            
+            anim_sketcher = context.scene.anim_sketcher
+            
+            motion_path = [Vector(p.location) for p in motion_path_points[
+                anim_sketcher.view_start_frame - context.scene.frame_start : anim_sketcher.view_end_frame - context.scene.frame_start
+            ]]
+            mouse_path = [Vector(p.location) for p in anim_sketcher.sketch_points]
             
             print("Before: ", mouse_path)
             
@@ -92,6 +100,12 @@ class DrawEditMotionsOperator(bpy.types.Operator):
             origin = rv3d.view_matrix.inverted().translation
             
             # TODO: switch to motion_path
+            # Psuedocode
+            # for each frame, if key frame
+            #   find mouse path equivalent (sample mouse path)
+            #   no need to sample motion path
+            #   replace mouse_path[i] with sampled mouse pt
+            #   replace sampled_motion_path with the existing motion path
             for i, p in enumerate(mouse_path):
                 t = mouse_path_lengths[i] / mouse_path_total
 
@@ -116,6 +130,8 @@ class DrawEditMotionsOperator(bpy.types.Operator):
             
             print("After: ", mouse_path)
             
+            # TODO uncomment
+            #bpy.types.SpaceView3D.draw_handler_remove(self._handle, 'WINDOW')
             context.area.tag_redraw()
             return {'FINISHED'}
         elif event.type == 'ESC' or event.type == 'RIGHTMOUSE':
