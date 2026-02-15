@@ -29,6 +29,12 @@ def sample_path_at_t(points, arc_lengths, total_length, t):
             return points[i-1].lerp(points[i], factor)
     return points[-1]  
 
+def find_key_at_frame(fcurve, frame):
+    for kp in fcurve.keyframe_points:
+        if abs(kp.co.x - frame) < 1e-3:
+            return kp
+    return None
+
 #def project_to_depth(point, view_dir, target_depth):
 #    current_depth = point.dot(view_dir)
 #    delta = target_depth - current_depth
@@ -86,7 +92,7 @@ class DrawEditMotionsOperator(bpy.types.Operator):
             anim_sketcher = context.scene.anim_sketcher
             
             motion_path = [Vector(p.location) for p in motion_path_points[
-                anim_sketcher.view_start_frame - context.scene.frame_start : anim_sketcher.view_end_frame - context.scene.frame_start
+                anim_sketcher.view_start_frame - context.scene.frame_start : anim_sketcher.view_end_frame + 1 - context.scene.frame_start
             ]]
             mouse_path = [Vector(p.location) for p in anim_sketcher.sketch_points]
             

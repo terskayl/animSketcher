@@ -31,7 +31,7 @@ def draw_callback_px(self, context):
         'LINE_STRIP', 
         {"pos": [p.location for p in 
             context.active_bone.cached_motion_path.points[
-                anim_sketcher.view_start_frame - scene.frame_start : anim_sketcher.view_end_frame - scene.frame_start
+                anim_sketcher.view_start_frame - scene.frame_start : anim_sketcher.view_end_frame + 1 - scene.frame_start
             ]
         ]}
     )
