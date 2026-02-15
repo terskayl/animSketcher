@@ -18,10 +18,12 @@ class AnimSketcherSettings(bpy.types.PropertyGroup):
     timeline_width: bpy.props.IntProperty(default=32)
     view_start_frame: bpy.props.IntProperty(default=1, min=0)
     view_end_frame:bpy.props.IntProperty(default=256, min=0)
+    sketch_points: bpy.props.CollectionProperty(type=MotionPathPoint)
 
 
-def draw_callback_px(self,context):
-    anim_sketcher = context.scene.anim_sketcher
+def draw_callback_px(self, context):
+    scene = context.scene
+    anim_sketcher = scene.anim_sketcher
     shader = gpu.shader.from_builtin('UNIFORM_COLOR')
     gpu.state.line_width_set(2.0)
     batch = batch_for_shader(
