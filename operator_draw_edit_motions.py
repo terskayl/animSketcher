@@ -105,13 +105,7 @@ class DrawEditMotionsOperator(bpy.types.Operator):
             
             origin = rv3d.view_matrix.inverted().translation
             
-            # TODO: switch to motion_path
-            # Psuedocode
-            # for each frame, if key frame
-            #   find mouse path equivalent (sample mouse path)
-            #   no need to sample motion path
-            #   replace mouse_path[i] with sampled mouse pt
-            #   replace sampled_motion_path with the existing motion path
+            # Debugging visualization start
             for i, p in enumerate(mouse_path):
                 t = mouse_path_lengths[i] / mouse_path_total
 
@@ -120,7 +114,8 @@ class DrawEditMotionsOperator(bpy.types.Operator):
                     motion_path_lengths,
                     motion_path_total,
                     t)
-                    
+            
+                        
                 # prev: match depth
                 #target_depth = sampled_motion_path.dot(view_dir)
                 #new_p = project_to_depth(p, view_dir, target_depth)
@@ -133,9 +128,46 @@ class DrawEditMotionsOperator(bpy.types.Operator):
             
             for i in range(len(mouse_path)):
                 context.scene.anim_sketcher.sketch_points[i].location = new_mouse_path[i]
+            # Debugging visualization end
             
-            print("After: ", mouse_path)
+            arm = context.object
+            if not arm:
+                self.report({'WARNING'}, "No object selected, cannot run operator")
+                return {'CANCELLED'}
+            if not arm.animation_data or not arm.animation_data.action:
+                self.report({'WARNING'}, "No animation or action on this object, cannot run operator")
+                return {'CANCELLED'}
             
+            action = arm.animation_data.action
+            loc_path = f'pose.bones["{active_bone.name}"].location'
+            fcurves = [fc for fc in action.fcurves if fc.data_path == loc_path]
+            
+            for i, p in enumerate(motion_path):
+                frame = i + anim_sketcher.view_start_frame
+                
+                for fc in fcurves:
+                    axis = fc.array_index
+                    kp = find_key_at_frame(fc, frame)
+                    
+                    if kp:
+                
+                        t = motion_path_lengths[i] / motion_path_total
+                        
+                        sampled_mouse_path = sample_path_at_t(
+                            mouse_path,
+                            mouse_path_lengths,
+                            mouse_path_total,
+                            t)
+                    
+                        direction = (sampled_mouse_path - origin).normalized()
+                        depth_target = (p - origin).dot(direction)
+                        new_p = origin + direction * depth_target
+                        
+                        kp.co.y = new_p[axis]
+                        kp.handle_left.y = new_p[axis]
+                        kp.handle_right.y = new_p[axis]
+            
+            action.update_tag()
             # TODO uncomment
             #bpy.types.SpaceView3D.draw_handler_remove(self._handle, 'WINDOW')
             context.area.tag_redraw()
